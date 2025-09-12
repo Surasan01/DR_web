@@ -10,19 +10,28 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleUploadSuccess = (data) => {
+    console.log('Upload success:', data)
+    console.log('Data keys:', Object.keys(data))
+    console.log('Data.prediction:', data.prediction)
+    console.log('Data.confidence:', data.confidence)
     setResult(data)
     setIsLoading(false)
   }
 
   const handleUploadStart = () => {
+    console.log('Upload started')
     setIsLoading(true)
     setResult(null)
   }
 
   const handleReset = () => {
+    console.log('Reset called')
     setResult(null)
     setIsLoading(false)
   }
+
+  // Debug log
+  console.log('App state:', { isLoading, result: !!result })
 
   return (
     <div className="app">
@@ -49,10 +58,25 @@ function App() {
           )}
 
           {result && (
-            <ResultDisplay
-              result={result}
-              onReset={handleReset}
-            />
+            <>
+              <div style={{ 
+                background: 'rgba(255, 255, 255, 0.9)', 
+                padding: '1rem', 
+                borderRadius: '8px', 
+                marginBottom: '1rem',
+                color: '#333',
+                fontSize: '0.9rem'
+              }}>
+                <strong>Debug Info:</strong>
+                <pre style={{ fontSize: '0.8rem', margin: '0.5rem 0' }}>
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </div>
+              <ResultDisplay
+                result={result}
+                onReset={handleReset}
+              />
+            </>
           )}
         </div>
       </main>

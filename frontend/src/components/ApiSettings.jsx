@@ -43,20 +43,71 @@ export default function ApiSettings() {
   }
 
   return (
-    <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-      <strong>API Base URL</strong>
+    <div style={{ 
+      background: 'rgba(248, 250, 252, 0.95)', 
+      border: '1px solid #e5e7eb', 
+      borderRadius: 12, 
+      padding: 16, 
+      marginBottom: 24,
+      backdropFilter: 'blur(10px)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+      position: 'relative',
+      zIndex: 10
+    }}>
+      <strong style={{ color: '#374151', fontSize: '1rem' }}>API Base URL</strong>
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <input
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="https://<your-backend-domain>"
-          style={{ flex: 1, padding: 8, border: '1px solid #cbd5e1', borderRadius: 6 }}
+          style={{ 
+            flex: 1, 
+            padding: 8, 
+            border: '1px solid #cbd5e1', 
+            borderRadius: 6,
+            fontSize: '0.9rem'
+          }}
         />
-        <button type="button" onClick={onSave} disabled={checking} style={{ padding: '8px 12px' }}>Save</button>
-        <button type="button" onClick={onClear} disabled={checking} style={{ padding: '8px 12px' }}>Clear</button>
+        <button 
+          type="button" 
+          onClick={onSave} 
+          disabled={checking} 
+          style={{ 
+            padding: '8px 12px',
+            background: '#3b82f6', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: 6, 
+            cursor: checking ? 'not-allowed' : 'pointer',
+            opacity: checking ? 0.7 : 1
+          }}
+        >
+          Save
+        </button>
+        <button 
+          type="button" 
+          onClick={onClear} 
+          disabled={checking} 
+          style={{ 
+            padding: '8px 12px',
+            background: '#6b7280', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: 6, 
+            cursor: checking ? 'not-allowed' : 'pointer',
+            opacity: checking ? 0.7 : 1
+          }}
+        >
+          Clear
+        </button>
       </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+      <div style={{ 
+        marginTop: 6, 
+        fontSize: 12, 
+        color: status.includes('OK') ? '#059669' : '#dc2626',
+        fontWeight: '500'
+      }}>
         Health: {status} {checking ? '...' : ''}
       </div>
     </div>
