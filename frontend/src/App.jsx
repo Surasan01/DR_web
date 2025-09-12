@@ -3,7 +3,7 @@ import './App.css'
 import Header from './components/Header'
 import UploadForm from './components/UploadForm'
 import ResultDisplay from './components/ResultDisplay'
-// ลบบรรทัดนี้ -> import Footer from './components/Footer'
+import ApiSettings from './components/ApiSettings'
 
 function App() {
   const [result, setResult] = useState(null)
@@ -29,33 +29,33 @@ function App() {
       <Header />
       <main className="main-content">
         <div className="container">
+          <ApiSettings />
           <div className="app-description">
             <h2>AI-Powered Diabetic Retinopathy Detection</h2>
             <p>Upload a retinal image to get instant AI analysis for diabetic retinopathy detection</p>
           </div>
-          
-          <UploadForm 
+
+          <UploadForm
             onUploadSuccess={handleUploadSuccess}
             onUploadStart={handleUploadStart}
             isLoading={isLoading}
           />
-          
+
           {isLoading && (
             <div className="loading-section">
               <div className="loading-spinner"></div>
               <p>Analyzing image...</p>
             </div>
           )}
-          
+
           {result && (
-            <ResultDisplay 
-              result={result} 
+            <ResultDisplay
+              result={result}
               onReset={handleReset}
             />
           )}
         </div>
       </main>
-      {/* ลบบรรทัดนี้ -> <Footer /> */}
     </div>
   )
 }
