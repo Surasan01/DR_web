@@ -59,11 +59,15 @@ function App() {
 
           {result && (
             <>
+              <ResultDisplay
+                result={result}
+                onReset={handleReset}
+              />
               <div style={{ 
                 background: 'rgba(255, 255, 255, 0.9)', 
                 padding: '1rem', 
                 borderRadius: '8px', 
-                marginBottom: '1rem',
+                marginTop: '2rem',
                 color: '#333',
                 fontSize: '0.9rem'
               }}>
@@ -72,10 +76,6 @@ function App() {
                   {JSON.stringify(result, null, 2)}
                 </pre>
               </div>
-              <ResultDisplay
-                result={result}
-                onReset={handleReset}
-              />
             </>
           )}
         </div>
