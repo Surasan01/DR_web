@@ -36,7 +36,6 @@
   text-align: center;
   background: rgba(249, 250, 251, 0.8);
   transition: all 0.3s ease;
-  cursor: pointer;
   min-height: 200px;
   display: flex;
   align-items: center;
@@ -104,6 +103,9 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
 }
 
 .select-files-btn:hover,
@@ -152,6 +154,33 @@
 .total-size {
   color: #6b7280;
   font-size: 0.9rem;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-more-btn,
+.add-folder-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  background: white;
+  color: #3b82f6;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.add-more-btn:hover,
+.add-folder-btn:hover {
+  background: #3b82f6;
+  color: white;
 }
 
 .remove-all-btn {

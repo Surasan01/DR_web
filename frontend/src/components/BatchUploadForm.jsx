@@ -2,6 +2,36 @@ import React, { useState, useRef } from 'react'
 import './BatchUploadForm.css'
 import { getApiBase } from '../lib/apiConfig'
 
+// Helper function เพื่ออ่านไฟล์ทั้งหมดจากโฟลเดอร์
+const getAllFilesFromDirectory = (dirEntry) => {
+  return new Promise((resolve) => {
+    const files = []
+    
+    const readDirectory = (entry) => {
+      return new Promise((resolveDir) => {
+        if (entry.isFile) {
+          entry.file((file) => {
+            files.push(file)
+            resolveDir()
+          }, () => resolveDir())
+        } else if (entry.isDirectory) {
+          const dirReader = entry.createReader()
+          dirReader.readEntries((entries) => {
+            const promises = entries.map(readDirectory)
+            Promise.all(promises).then(() => resolveDir())
+          }, () => resolveDir())
+        } else {
+          resolveDir()
+        }
+      })
+    }
+    
+    readDirectory(dirEntry).then(() => {
+      resolve(files)
+    })
+  })
+}
+
 const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }) => {
   const [selectedFiles, setSelectedFiles] = useState([])
   const [error, setError] = useState('')
@@ -9,7 +39,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   const fileInputRef = useRef(null)
   const folderInputRef = useRef(null)
 
-  const handleFilesChange = (files) => {
+  const handleFilesChange = (files, append = false) => {
     // กรองเฉพาะไฟล์รูปภาพ
     const imageFiles = Array.from(files).filter(file => 
       file.type.startsWith('image/')
@@ -20,29 +50,107 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
       return
     }
     
-    setSelectedFiles(imageFiles)
-    setError('')
+    if (append) {
+      // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม (ไม่ให้ซ้ำกัน)
+      const existingNames = new Set(selectedFiles.map(f => f.name))
+      const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
+      
+      if (newFiles.length === 0) {
+        setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
+        return
+      }
+      
+      setSelectedFiles(prev => [...prev, ...newFiles])
+      setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
+    } else {
+      // แทนที่ไฟล์ทั้งหมด
+      setSelectedFiles(imageFiles)
+      setError('')
+    }
   }
 
   const handleFileInputChange = (e) => {
     if (e.target.files) {
-      handleFilesChange(e.target.files)
+      const append = selectedFiles.length > 0
+      handleFilesChange(e.target.files, append)
     }
   }
 
   const handleFolderInputChange = (e) => {
-    if (e.target.files) {
-      handleFilesChange(e.target.files)
+    console.log('Folder input change:', e.target.files)
+    if (e.target.files && e.target.files.length > 0) {
+      const append = selectedFiles.length > 0
+      handleFilesChange(e.target.files, append)
     }
   }
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault()
     setIsDragActive(false)
     
+    const items = e.dataTransfer.items
     const files = e.dataTransfer.files
-    if (files) {
-      handleFilesChange(files)
+    
+    if (items && items.length > 0) {
+      console.log('Dropped items:', items.length)
+      
+      // ตรวจสอบว่ามีโฟลเดอร์หรือไม่
+      const allFiles = []
+      
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.kind === 'file') {
+          const entry = item.webkitGetAsEntry()
+          if (entry) {
+            if (entry.isDirectory) {
+              // อ่านไฟล์จากโฟลเดอร์
+              const folderFiles = await getAllFilesFromDirectory(entry)
+              allFiles.push(...folderFiles)
+            } else {
+              // ไฟล์เดี่ยว
+              const file = item.getAsFile()
+              if (file) allFiles.push(file)
+            }
+          }
+        }
+      }
+      
+      console.log('All files found:', allFiles.length)
+      
+      // กรองเฉพาะไฟล์รูปภาพ
+      const imageFiles = allFiles.filter(file => 
+        file && file.type && file.type.startsWith('image/')
+      )
+      
+      console.log('Image files from drop:', imageFiles.length)
+      
+      if (imageFiles.length === 0) {
+        setError('ไม่พบไฟล์รูปภาพในสิ่งที่ลาก กรุณาลากไฟล์ JPG, PNG, GIF หรือโฟลเดอร์ที่มีรูปภาพ')
+        return
+      }
+      
+      const append = selectedFiles.length > 0
+      
+      if (append) {
+        // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม
+        const existingNames = new Set(selectedFiles.map(f => f.name))
+        const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
+        
+        if (newFiles.length === 0) {
+          setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
+          return
+        }
+        
+        setSelectedFiles(prev => [...prev, ...newFiles])
+        setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
+      } else {
+        setSelectedFiles(imageFiles)
+        setError('')
+      }
+    } else if (files && files.length > 0) {
+      // fallback สำหรับไฟล์ธรรมดา
+      const append = selectedFiles.length > 0
+      handleFilesChange(files, append)
     }
   }
 
@@ -149,14 +257,18 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                   <polyline points="10,9 9,9 8,9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <h4>เลือกไฟล์หรือโฟลเดอร์</h4>
-              <p>ลากและวางไฟล์ที่นี่ หรือคลิกเพื่อเลือก</p>
+              <h4>เลือกไฟล์รูปภาพ</h4>
+              <p>คลิกปุ่มด้านล่าง หรือลากไฟล์/โฟลเดอร์มาวาง</p>
               
               <div className="upload-buttons">
                 <button 
                   type="button" 
                   className="select-files-btn"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('File button clicked')
+                    fileInputRef.current?.click()
+                  }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/>
@@ -168,7 +280,12 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                 <button 
                   type="button" 
                   className="select-folder-btn"
-                  onClick={() => folderInputRef.current?.click()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('Folder button clicked')
+                    console.log('folderInputRef.current:', folderInputRef.current)
+                    folderInputRef.current?.click()
+                  }}
                 >
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
@@ -178,7 +295,10 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
               </div>
               
               <div className="supported-formats">
-                รองรับ JPG, PNG, GIF (ไม่จำกัดจำนวนไฟล์)
+                <div>รองรับ JPG, PNG, GIF (ไม่จำกัดจำนวนไฟล์)</div>
+                <div style={{ fontSize: '0.85em', color: '#666', marginTop: '4px' }}>
+                  💡 เลือกโฟลเดอร์ = หารูปทั้งหมดในโฟลเดอร์โดยอัตโนมัติ
+                </div>
               </div>
             </div>
           ) : (
@@ -188,13 +308,37 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                   <span className="file-count">{selectedFiles.length} ไฟล์</span>
                   <span className="total-size">{formatFileSize(getTotalSize())}</span>
                 </div>
-                <button 
-                  type="button" 
-                  className="remove-all-btn"
-                  onClick={handleRemoveAll}
-                >
-                  ลบทั้งหมด
-                </button>
+                <div className="summary-actions">
+                  <button 
+                    type="button" 
+                    className="add-more-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      console.log('Add more files clicked')
+                      fileInputRef.current?.click()
+                    }}
+                  >
+                    + เพิ่มไฟล์
+                  </button>
+                  <button 
+                    type="button" 
+                    className="add-folder-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      console.log('Add folder clicked')
+                      folderInputRef.current?.click()
+                    }}
+                  >
+                    + เพิ่มโฟลเดอร์
+                  </button>
+                  <button 
+                    type="button" 
+                    className="remove-all-btn"
+                    onClick={handleRemoveAll}
+                  >
+                    ลบทั้งหมด
+                  </button>
+                </div>
               </div>
               
               <div className="files-list">
@@ -244,22 +388,20 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         <input 
           ref={folderInputRef}
           type="file" 
-          accept="image/*" 
+          webkitdirectory
           multiple
-          webkitdirectory=""
-          directory=""
           style={{ display: 'none' }}
           onChange={handleFolderInputChange}
         />
 
         {error && (
-          <div className="error" style={{ 
-            color: '#dc2626', 
+          <div className="message" style={{ 
+            color: error.includes('เพิ่ม') ? '#059669' : '#dc2626', 
             marginTop: '1rem', 
             padding: '0.75rem', 
-            backgroundColor: '#fef2f2', 
+            backgroundColor: error.includes('เพิ่ม') ? '#ecfdf5' : '#fef2f2', 
             borderRadius: '8px',
-            border: '1px solid #fecaca'
+            border: error.includes('เพิ่ม') ? '1px solid #a7f3d0' : '1px solid #fecaca'
           }}>
             {error}
           </div>
