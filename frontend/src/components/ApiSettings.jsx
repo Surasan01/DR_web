@@ -102,14 +102,7 @@ export default function ApiSettings() {
           Clear
         </button>
       </div>
-      <div style={{ 
-        marginTop: 6, 
-        fontSize: 12, 
-        color: status.includes('OK') ? '#059669' : '#dc2626',
-        fontWeight: '500'
-      }}>
-        Health: {status} {checking ? '...' : ''}
-      </div>
+      
     </div>
   )
 }
