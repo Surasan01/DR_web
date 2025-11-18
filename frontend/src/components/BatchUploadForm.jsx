@@ -36,51 +36,78 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   const [selectedFiles, setSelectedFiles] = useState([])
   const [error, setError] = useState('')
   const [isDragActive, setIsDragActive] = useState(false)
+  const [loadProgress, setLoadProgress] = useState({ active: false, count: 0, total: 0, label: '' })
   const fileInputRef = useRef(null)
   const folderInputRef = useRef(null)
 
-  const handleFilesChange = (files, append = false) => {
-    // กรองเฉพาะไฟล์รูปภาพ
-    const imageFiles = Array.from(files).filter(file => 
-      file.type.startsWith('image/')
-    )
-    
-    if (imageFiles.length === 0) {
+  const handleFilesChange = async (files, append = false, label = '') => {
+    const incoming = Array.isArray(files) ? files : Array.from(files || [])
+    if (incoming.length === 0) {
       setError('ไม่พบไฟล์รูปภาพ กรุณาเลือกไฟล์ JPG, PNG, หรือ GIF')
+      setLoadProgress({ active: false, count: 0, total: 0, label: '' })
       return
     }
-    
-    if (append) {
-      // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม (ไม่ให้ซ้ำกัน)
-      const existingNames = new Set(selectedFiles.map(f => f.name))
-      const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
-      
-      if (newFiles.length === 0) {
-        setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
+
+    setLoadProgress({
+      active: true,
+      count: 0,
+      total: incoming.length,
+      label: label || 'กำลังโหลดไฟล์จากเครื่อง'
+    })
+
+    try {
+      const imageFiles = []
+      for (let i = 0; i < incoming.length; i++) {
+        const file = incoming[i]
+        if (file?.type?.startsWith('image/')) {
+          imageFiles.push(file)
+        }
+        const processed = i + 1
+        setLoadProgress(prev => ({ ...prev, count: processed }))
+        if (processed % 25 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0))
+        }
+      }
+
+      if (imageFiles.length === 0) {
+        setError('ไม่พบไฟล์รูปภาพ กรุณาเลือกไฟล์ JPG, PNG, หรือ GIF')
         return
       }
       
-      setSelectedFiles(prev => [...prev, ...newFiles])
-      setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
-    } else {
-      // แทนที่ไฟล์ทั้งหมด
-      setSelectedFiles(imageFiles)
-      setError('')
+      if (append) {
+        // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม (ไม่ให้ซ้ำกัน)
+        const existingNames = new Set(selectedFiles.map(f => f.name))
+        const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
+        
+        if (newFiles.length === 0) {
+          setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
+          return
+        }
+        
+        setSelectedFiles(prev => [...prev, ...newFiles])
+        setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
+      } else {
+        // แทนที่ไฟล์ทั้งหมด
+        setSelectedFiles(imageFiles)
+        setError('')
+      }
+    } finally {
+      setLoadProgress({ active: false, count: 0, total: 0, label: '' })
     }
   }
 
-  const handleFileInputChange = (e) => {
+  const handleFileInputChange = async (e) => {
     if (e.target.files) {
       const append = selectedFiles.length > 0
-      handleFilesChange(e.target.files, append)
+      await handleFilesChange(e.target.files, append, 'กำลังโหลดไฟล์จากการเลือก')
     }
   }
 
-  const handleFolderInputChange = (e) => {
+  const handleFolderInputChange = async (e) => {
     console.log('Folder input change:', e.target.files)
     if (e.target.files && e.target.files.length > 0) {
       const append = selectedFiles.length > 0
-      handleFilesChange(e.target.files, append)
+      await handleFilesChange(e.target.files, append, 'กำลังโหลดไฟล์จากโฟลเดอร์')
     }
   }
 
@@ -90,6 +117,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
     
     const items = e.dataTransfer.items
     const files = e.dataTransfer.files
+    const append = selectedFiles.length > 0
     
     if (items && items.length > 0) {
       console.log('Dropped items:', items.length)
@@ -116,41 +144,15 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
       }
       
       console.log('All files found:', allFiles.length)
-      
-      // กรองเฉพาะไฟล์รูปภาพ
-      const imageFiles = allFiles.filter(file => 
-        file && file.type && file.type.startsWith('image/')
-      )
-      
-      console.log('Image files from drop:', imageFiles.length)
-      
-      if (imageFiles.length === 0) {
+      if (allFiles.length === 0) {
         setError('ไม่พบไฟล์รูปภาพในสิ่งที่ลาก กรุณาลากไฟล์ JPG, PNG, GIF หรือโฟลเดอร์ที่มีรูปภาพ')
         return
       }
-      
-      const append = selectedFiles.length > 0
-      
-      if (append) {
-        // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม
-        const existingNames = new Set(selectedFiles.map(f => f.name))
-        const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
-        
-        if (newFiles.length === 0) {
-          setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
-          return
-        }
-        
-        setSelectedFiles(prev => [...prev, ...newFiles])
-        setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
-      } else {
-        setSelectedFiles(imageFiles)
-        setError('')
-      }
+
+      await handleFilesChange(allFiles, append, 'กำลังโหลดไฟล์จากการลากวาง')
     } else if (files && files.length > 0) {
       // fallback สำหรับไฟล์ธรรมดา
-      const append = selectedFiles.length > 0
-      handleFilesChange(files, append)
+      await handleFilesChange(files, append, 'กำลังโหลดไฟล์จากการลากวาง')
     }
   }
 
@@ -239,6 +241,24 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
           <h3>📁 Batch Analysis</h3>
           <p>อัพโหลดหลายรูปภาพพร้อมกันเพื่อวิเคราะห์แบบกลุ่ม</p>
         </div>
+
+        {loadProgress.active && (
+          <div className="load-progress">
+            <div className="load-progress-text">
+              {loadProgress.label} ({loadProgress.count}/{loadProgress.total} ไฟล์)
+            </div>
+            <div className="load-progress-bar">
+              <div
+                className="load-progress-bar-fill"
+                style={{
+                  width: loadProgress.total
+                    ? `${Math.min(100, Math.round((loadProgress.count / loadProgress.total) * 100))}%`
+                    : '0%'
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
 
         <div 
           className={`batch-upload-area ${isDragActive ? 'drag-active' : ''} ${selectedFiles.length > 0 ? 'has-files' : ''}`}
