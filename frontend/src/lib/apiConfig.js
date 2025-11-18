@@ -1,3 +1,5 @@
+const DEFAULT_API_BASE = 'https://8000-dep-01kabqt5aktqkvgc2zrfjadxhe-d.cloudspaces.litng.ai'
+
 export function normalizeUrl(url) {
   if (!url) return ''
   return url.replace(/\/+$/, '')
@@ -22,7 +24,9 @@ export function setStoredApiBase(url) {
 export function getApiBase() {
   const override = getStoredApiBase()
   if (override) return override
-  const envBase = normalizeUrl(import.meta.env.VITE_API_BASE_URL || '')
-  if (envBase) return envBase
-  return normalizeUrl(window.location.origin || '')
+  return normalizeUrl(DEFAULT_API_BASE)
+}
+
+export function getDefaultApiBase() {
+  return normalizeUrl(DEFAULT_API_BASE)
 }

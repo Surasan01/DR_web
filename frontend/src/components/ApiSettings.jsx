@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { getApiBase, getStoredApiBase, setStoredApiBase, normalizeUrl } from '../lib/apiConfig'
+import { getApiBase, getStoredApiBase, setStoredApiBase, normalizeUrl, getDefaultApiBase } from '../lib/apiConfig'
 
 export default function ApiSettings() {
   const [value, setValue] = useState(getStoredApiBase() || getApiBase())
   const [status, setStatus] = useState('checking...')
   const [checking, setChecking] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const defaultBase = getDefaultApiBase()
 
   const checkHealth = async (base) => {
     const url = normalizeUrl(base) + '/api/health'
@@ -42,6 +44,8 @@ export default function ApiSettings() {
     alert('Cleared override; using default')
   }
 
+  const currentDisplayUrl = normalizeUrl(value) || defaultBase
+
   return (
     <div style={{ 
       background: 'rgba(248, 250, 252, 0.95)', 
@@ -54,55 +58,90 @@ export default function ApiSettings() {
       position: 'relative',
       zIndex: 10
     }}>
-      <strong style={{ color: '#374151', fontSize: '1rem' }}>API Base URL</strong>
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="https://<your-backend-domain>"
-          style={{ 
-            flex: 1, 
-            padding: 8, 
-            border: '1px solid #cbd5e1', 
-            borderRadius: 6,
-            fontSize: '0.9rem'
-          }}
-        />
-        <button 
-          type="button" 
-          onClick={onSave} 
-          disabled={checking} 
-          style={{ 
-            padding: '8px 12px',
-            background: '#3b82f6', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: 6, 
-            cursor: checking ? 'not-allowed' : 'pointer',
-            opacity: checking ? 0.7 : 1
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 auto', minWidth: 200 }}>
+          <strong style={{ color: '#374151', fontSize: '1rem' }}>API Base URL</strong>
+          <div style={{ color: '#1d4ed8', fontSize: '0.9rem', marginTop: 4 }}>
+            {currentDisplayUrl}
+          </div>
+          <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+            สถานะ: {checking ? 'กำลังตรวจสอบ...' : status}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen(prev => !prev)}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 8,
+            border: '1px solid #3b82f6',
+            background: isOpen ? '#3b82f6' : 'white',
+            color: isOpen ? 'white' : '#1d4ed8',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
           }}
         >
-          Save
-        </button>
-        <button 
-          type="button" 
-          onClick={onClear} 
-          disabled={checking} 
-          style={{ 
-            padding: '8px 12px',
-            background: '#6b7280', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: 6, 
-            cursor: checking ? 'not-allowed' : 'pointer',
-            opacity: checking ? 0.7 : 1
-          }}
-        >
-          Clear
+          {isOpen ? 'ปิดการตั้งค่า' : 'เปิดการตั้งค่า'}
         </button>
       </div>
-      
+
+      {isOpen && (
+        <>
+          <p style={{ fontSize: '0.85rem', color: '#4b5563', marginTop: 12 }}>
+            ระบบจะใช้ค่าเริ่มต้น <code>{defaultBase}</code> โดยอัตโนมัติ หากต้องการกำหนดเองให้กรอกด้านล่าง
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="https://<your-backend-domain>"
+              style={{ 
+                flex: 1, 
+                minWidth: 220,
+                padding: 8, 
+                border: '1px solid #cbd5e1', 
+                borderRadius: 6,
+                fontSize: '0.9rem'
+              }}
+            />
+            <button 
+              type="button" 
+              onClick={onSave} 
+              disabled={checking} 
+              style={{ 
+                padding: '8px 12px',
+                background: '#3b82f6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 6, 
+                cursor: checking ? 'not-allowed' : 'pointer',
+                opacity: checking ? 0.7 : 1,
+                flexShrink: 0
+              }}
+            >
+              Save
+            </button>
+            <button 
+              type="button" 
+              onClick={onClear} 
+              disabled={checking} 
+              style={{ 
+                padding: '8px 12px',
+                background: '#6b7280', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 6, 
+                cursor: checking ? 'not-allowed' : 'pointer',
+                opacity: checking ? 0.7 : 1,
+                flexShrink: 0
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
