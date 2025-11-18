@@ -36,19 +36,38 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   const [selectedFiles, setSelectedFiles] = useState([])
   const [error, setError] = useState('')
   const [isDragActive, setIsDragActive] = useState(false)
-  const [loadProgress, setLoadProgress] = useState({ active: false, count: 0, total: 0, label: '' })
+  const [loadProgress, setLoadProgress] = useState({ visible: false, active: false, count: 0, total: 0, label: '' })
   const fileInputRef = useRef(null)
   const folderInputRef = useRef(null)
+  const progressTimeoutRef = useRef(null)
+
+  const resetProgress = (delay = 0) => {
+    if (progressTimeoutRef.current) {
+      clearTimeout(progressTimeoutRef.current)
+      progressTimeoutRef.current = null
+    }
+
+    if (delay === 0) {
+      setLoadProgress({ visible: false, active: false, count: 0, total: 0, label: '' })
+    } else {
+      progressTimeoutRef.current = setTimeout(() => {
+        setLoadProgress({ visible: false, active: false, count: 0, total: 0, label: '' })
+        progressTimeoutRef.current = null
+      }, delay)
+    }
+  }
 
   const handleFilesChange = async (files, append = false, label = '') => {
     const incoming = Array.isArray(files) ? files : Array.from(files || [])
     if (incoming.length === 0) {
       setError('ไม่พบไฟล์รูปภาพ กรุณาเลือกไฟล์ JPG, PNG, หรือ GIF')
-      setLoadProgress({ active: false, count: 0, total: 0, label: '' })
+      resetProgress()
       return
     }
 
+    resetProgress()
     setLoadProgress({
+      visible: true,
       active: true,
       count: 0,
       total: incoming.length,
@@ -92,7 +111,13 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         setError('')
       }
     } finally {
-      setLoadProgress({ active: false, count: 0, total: 0, label: '' })
+      setLoadProgress(prev => ({
+        ...prev,
+        visible: true,
+        active: false,
+        label: 'โหลดไฟล์เสร็จแล้ว'
+      }))
+      resetProgress(1500)
     }
   }
 
@@ -242,10 +267,13 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
           <p>อัพโหลดหลายรูปภาพพร้อมกันเพื่อวิเคราะห์แบบกลุ่ม</p>
         </div>
 
-        {loadProgress.active && (
+        {loadProgress.visible && (
           <div className="load-progress">
             <div className="load-progress-text">
-              {loadProgress.label} ({loadProgress.count}/{loadProgress.total} ไฟล์)
+              {loadProgress.label}
+              {loadProgress.total > 0 && (
+                <> ({Math.min(loadProgress.count, loadProgress.total)}/{loadProgress.total} ไฟล์)</>
+              )}
             </div>
             <div className="load-progress-bar">
               <div
