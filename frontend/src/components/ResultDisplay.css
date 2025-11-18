@@ -1,18 +1,16 @@
 .result-display {
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--background-white);
   backdrop-filter: blur(25px);
   border-radius: 28px;
   padding: 3rem;
   margin: 3rem 0;
-  box-shadow: 
-    0 25px 50px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
   animation: slideUpScale 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   z-index: 7;
+  transition: all 0.3s ease;
 }
 
 @keyframes slideUpScale {
@@ -124,14 +122,14 @@
 
 .notice-content h5 {
   margin: 0 0 0.5rem 0;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 1.1rem;
   font-weight: 600;
 }
 
 .notice-content p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -147,7 +145,7 @@
 
 .image-comparison h4 {
   margin: 0 0 1.25rem 0;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 1.2rem;
   font-weight: 600;
   text-align: center;
@@ -211,13 +209,13 @@
 
 .class-number .label {
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
 .class-number .value {
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 1.1rem;
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   -webkit-background-clip: text;
@@ -228,13 +226,13 @@
 .class-details .class-name {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .class-details .class-description {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
 }
@@ -253,7 +251,7 @@
 .result-header h3 {
   font-size: 2rem;
   font-weight: 800;
-  color: #1f2937;
+  color: var(--text-primary);
   background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -433,7 +431,7 @@
 .result-content h4 {
   font-size: 1.75rem;
   font-weight: 800;
-  color: #1f2937;
+  color: var(--text-primary);
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
 }
@@ -483,12 +481,12 @@
 
 .confidence-header span:first-child {
   font-weight: 600;
-  color: #374151;
+  color: var(--text-primary);
 }
 
 .confidence-value {
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .confidence-bar {
@@ -506,16 +504,21 @@
 }
 
 .recommendations {
-  background: #f9fafb;
+  background: var(--rec-bg, #f9fafb);
   padding: 1.5rem;
   border-radius: 12px;
   border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .recommendations {
+  --rec-bg: rgba(30, 41, 59, 0.4);
 }
 
 .recommendations h5 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin-bottom: 1rem;
 }
 
@@ -527,7 +530,7 @@
 
 .recommendations li {
   padding: 0.5rem 0;
-  color: #4b5563;
+  color: var(--text-secondary);
   position: relative;
   padding-left: 1.5rem;
 }
@@ -541,10 +544,15 @@
 }
 
 .result-details {
-  background: #f8fafc;
+  background: var(--details-bg, #f8fafc);
   padding: 1.5rem;
   border-radius: 16px;
   margin-bottom: 2rem;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .result-details {
+  --details-bg: rgba(15, 23, 42, 0.4);
 }
 
 .detail-grid {
@@ -561,13 +569,13 @@
 
 .detail-label {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .detail-value {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 1rem;
 }
 

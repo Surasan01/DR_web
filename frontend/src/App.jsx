@@ -6,6 +6,7 @@ import ResultDisplay from './components/ResultDisplay'
 import BatchUploadForm from './components/BatchUploadForm'
 import BatchResultDisplay from './components/BatchResultDisplay'
 import ApiSettings from './components/ApiSettings'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 function App() {
   const [result, setResult] = useState(null)
@@ -57,9 +58,10 @@ function App() {
   })
 
   return (
-    <div className="app">
-      <Header />
-      <main className="main-content">
+    <ThemeProvider>
+      <div className="app">
+        <Header />
+        <main className="main-content">
         <div className="container">
           <ApiSettings />
           <div className="app-description">
@@ -173,6 +175,7 @@ function App() {
         </div>
       </main>
     </div>
+    </ThemeProvider>
   )
 }
 

@@ -3,12 +3,13 @@
 }
 
 .batch-upload-form {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--background-white);
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--border-light);
+  transition: all 0.3s ease;
 }
 
 .upload-header {
@@ -18,13 +19,13 @@
 
 .upload-header h3 {
   font-size: 1.5rem;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   font-weight: 600;
 }
 
 .upload-header p {
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
   font-size: 0.95rem;
 }
@@ -58,16 +59,21 @@
 }
 
 .batch-upload-area {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--upload-border, #d1d5db);
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
-  background: rgba(249, 250, 251, 0.8);
+  background: var(--upload-bg, rgba(249, 250, 251, 0.8));
   transition: all 0.3s ease;
   min-height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.dark-mode .batch-upload-area {
+  --upload-border: rgba(100, 116, 139, 0.6);
+  --upload-bg: rgba(30, 41, 59, 0.5);
 }
 
 .batch-upload-area:hover {
@@ -100,13 +106,13 @@
 
 .upload-content h4 {
   font-size: 1.25rem;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
   font-weight: 600;
 }
 
 .upload-content p {
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 1.5rem 0;
 }
 
@@ -123,10 +129,10 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: white;
-  color: #374151;
+  background: var(--background-white);
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -175,12 +181,12 @@
 
 .file-count {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
 .total-size {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
