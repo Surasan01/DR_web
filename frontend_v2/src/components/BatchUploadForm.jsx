@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useRef } from 'react'
 import './BatchUploadForm.css'
 import { getApiBase } from '../lib/apiConfig'
 
@@ -32,125 +32,14 @@ const getAllFilesFromDirectory = (dirEntry) => {
   })
 }
 
-const createEntry = (file) => ({
-  id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  file,
-  status: 'pending',
-  uploadId: null,
-  progress: { loaded: 0, total: file.size },
-  error: ''
-})
-
 const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }) => {
-  const [fileEntries, setFileEntries] = useState([])
+  const [selectedFiles, setSelectedFiles] = useState([])
   const [error, setError] = useState('')
   const [isDragActive, setIsDragActive] = useState(false)
   const [loadProgress, setLoadProgress] = useState({ visible: false, active: false, count: 0, total: 0, label: '' })
   const fileInputRef = useRef(null)
   const folderInputRef = useRef(null)
   const progressTimeoutRef = useRef(null)
-  const uploadControllersRef = useRef({})
-
-  useEffect(() => {
-    return () => {
-      if (progressTimeoutRef.current) {
-        clearTimeout(progressTimeoutRef.current)
-        progressTimeoutRef.current = null
-      }
-      Object.values(uploadControllersRef.current).forEach((controller) => controller?.abort?.())
-      uploadControllersRef.current = {}
-    }
-  }, [])
-
-  const updateEntry = (id, updater) => {
-    setFileEntries(prev => prev.map(entry => {
-      if (entry.id !== id) return entry
-      const updates = typeof updater === 'function' ? updater(entry) : updater
-      return { ...entry, ...updates }
-    }))
-  }
-
-  const uploadSingleEntry = (entry) => {
-    const API_BASE = getApiBase()
-    const formData = new FormData()
-    formData.append('file', entry.file)
-
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest()
-      uploadControllersRef.current[entry.id] = xhr
-
-      updateEntry(entry.id, {
-        status: 'uploading',
-        progress: { loaded: 0, total: entry.file.size },
-        error: ''
-      })
-
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return
-        updateEntry(entry.id, prev => ({
-          progress: {
-            loaded: event.loaded,
-            total: event.total || prev.progress.total || entry.file.size
-          }
-        }))
-      }
-
-      const finish = (updater) => {
-        updateEntry(entry.id, updater)
-        delete uploadControllersRef.current[entry.id]
-        resolve()
-      }
-
-      const markError = (message) => {
-        finish(prev => ({
-          status: 'error',
-          uploadId: null,
-          error: message,
-          progress: prev.progress
-        }))
-      }
-
-      xhr.onerror = () => {
-        markError('อัปโหลดผิดพลาด')
-      }
-
-      xhr.onabort = () => {
-        markError('ยกเลิกการอัปโหลด')
-      }
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const resp = JSON.parse(xhr.responseText)
-            if (resp?.upload_id) {
-              finish(() => ({
-                status: 'uploaded',
-                uploadId: resp.upload_id,
-                error: '',
-                progress: { loaded: entry.file.size, total: entry.file.size }
-              }))
-            } else {
-              markError('ไม่มี upload_id จากเซิร์ฟเวอร์')
-            }
-          } catch (parseErr) {
-            console.error(parseErr)
-            markError('อ่านผลลัพธ์อัปโหลดไม่ได้')
-          }
-        } else {
-          markError(`HTTP ${xhr.status}`)
-        }
-      }
-
-      xhr.open('POST', `${API_BASE}/api/upload-buffer`)
-      xhr.send(formData)
-    })
-  }
-
-  const uploadEntriesSequential = async (entries) => {
-    for (const entry of entries) {
-      await uploadSingleEntry(entry)
-    }
-  }
 
   const resetProgress = (delay = 0) => {
     if (progressTimeoutRef.current) {
@@ -204,29 +93,22 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         return
       }
       
-      const mappedEntries = imageFiles.map(createEntry)
-
-      let entriesToUpload = mappedEntries
-
       if (append) {
-        const existingNames = new Set(fileEntries.map(entry => entry.file.name))
-        const deduped = mappedEntries.filter(entry => !existingNames.has(entry.file.name))
-        if (deduped.length === 0) {
+        // เพิ่มไฟล์ใหม่เข้าไปในรายการเดิม (ไม่ให้ซ้ำกัน)
+        const existingNames = new Set(selectedFiles.map(f => f.name))
+        const newFiles = imageFiles.filter(file => !existingNames.has(file.name))
+        
+        if (newFiles.length === 0) {
           setError('ไฟล์ทั้งหมดมีอยู่ในรายการแล้ว')
           return
         }
-        entriesToUpload = deduped
-        setFileEntries(prev => [...prev, ...deduped])
-        setError(`เพิ่ม ${deduped.length} ไฟล์ใหม่ (รวม ${fileEntries.length + deduped.length} ไฟล์)`)
+        
+        setSelectedFiles(prev => [...prev, ...newFiles])
+        setError(`เพิ่ม ${newFiles.length} ไฟล์ใหม่ (รวม ${selectedFiles.length + newFiles.length} ไฟล์)`)
       } else {
-        setFileEntries(mappedEntries)
+        // แทนที่ไฟล์ทั้งหมด
+        setSelectedFiles(imageFiles)
         setError('')
-      }
-
-      if (entriesToUpload.length > 0) {
-        uploadEntriesSequential(entriesToUpload).catch(err => {
-          console.error('Batch buffer upload failed:', err)
-        })
       }
     } finally {
       setLoadProgress(prev => ({
@@ -241,7 +123,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
 
   const handleFileInputChange = async (e) => {
     if (e.target.files) {
-      const append = fileEntries.length > 0
+      const append = selectedFiles.length > 0
       await handleFilesChange(e.target.files, append, 'กำลังโหลดไฟล์จากการเลือก')
     }
   }
@@ -249,7 +131,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   const handleFolderInputChange = async (e) => {
     console.log('Folder input change:', e.target.files)
     if (e.target.files && e.target.files.length > 0) {
-      const append = fileEntries.length > 0
+      const append = selectedFiles.length > 0
       await handleFilesChange(e.target.files, append, 'กำลังโหลดไฟล์จากโฟลเดอร์')
     }
   }
@@ -260,7 +142,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
     
     const items = e.dataTransfer.items
     const files = e.dataTransfer.files
-    const append = fileEntries.length > 0
+    const append = selectedFiles.length > 0
     
     if (items && items.length > 0) {
       console.log('Dropped items:', items.length)
@@ -310,23 +192,15 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   }
 
   const handleRemoveFile = (index) => {
-    const entry = fileEntries[index]
-    if (entry && uploadControllersRef.current[entry.id]) {
-      uploadControllersRef.current[entry.id].abort()
-      delete uploadControllersRef.current[entry.id]
-    }
-
-    const newFiles = fileEntries.filter((_, i) => i !== index)
-    setFileEntries(newFiles)
+    const newFiles = selectedFiles.filter((_, i) => i !== index)
+    setSelectedFiles(newFiles)
     if (newFiles.length === 0) {
       setError('')
     }
   }
 
   const handleRemoveAll = () => {
-    Object.values(uploadControllersRef.current).forEach((controller) => controller?.abort?.())
-    uploadControllersRef.current = {}
-    setFileEntries([])
+    setSelectedFiles([])
     setError('')
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (folderInputRef.current) folderInputRef.current.value = ''
@@ -341,36 +215,29 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
   }
 
   const getTotalSize = () => {
-    return fileEntries.reduce((total, entry) => total + entry.file.size, 0)
+    return selectedFiles.reduce((total, file) => total + file.size, 0)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (fileEntries.length === 0) {
+    if (selectedFiles.length === 0) {
       setError('กรุณาเลือกไฟล์รูปภาพ')
-      return
-    }
-
-    const pendingEntry = fileEntries.find(entry => entry.status !== 'uploaded' || !entry.uploadId)
-    if (pendingEntry) {
-      setError(`ไฟล์ ${pendingEntry.file.name} ยังอัปโหลดไม่เสร็จหรือมีข้อผิดพลาด`)
       return
     }
 
     setError('')
     onBatchUploadStart?.()
 
+    const formData = new FormData()
+    selectedFiles.forEach(file => {
+      formData.append('files', file)
+    })
+
     const API_BASE = getApiBase()
     try {
-      const res = await fetch(`${API_BASE}/api/process-buffer`, {
+      const res = await fetch(`${API_BASE}/api/predict-batch`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          upload_ids: fileEntries.map(entry => entry.uploadId),
-          delete_after: true
-        })
+        body: formData,
       })
       
       if (!res.ok) {
@@ -385,18 +252,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         throw new Error('Invalid response format')
       }
       
-      const results = data.results || []
-      const summary = {
-        success: true,
-        total_files: results.length,
-        successful_predictions: results.filter(r => r.success).length,
-        failed_predictions: results.filter(r => !r.success).length,
-        total_processing_time: data.total_processing_time || `${results.length}s`,
-        results,
-        timestamp: data.timestamp || new Date().toISOString()
-      }
-      
-      onBatchUploadSuccess?.(summary)
+      onBatchUploadSuccess?.(data)
     } catch (err) {
       console.error(err)
       setError('การอัพโหลดล้มเหลว กรุณาตรวจสอบการเชื่อมต่อหรือ API Base URL')
@@ -433,12 +289,12 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         )}
 
         <div 
-          className={`batch-upload-area ${isDragActive ? 'drag-active' : ''} ${fileEntries.length > 0 ? 'has-files' : ''}`}
+          className={`batch-upload-area ${isDragActive ? 'drag-active' : ''} ${selectedFiles.length > 0 ? 'has-files' : ''}`}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
         >
-          {fileEntries.length === 0 ? (
+          {selectedFiles.length === 0 ? (
             <div className="upload-content">
               <div className="upload-icon">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -497,7 +353,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
             <div className="files-preview">
               <div className="files-summary">
                 <div className="summary-info">
-                  <span className="file-count">{fileEntries.length} ไฟล์</span>
+                  <span className="file-count">{selectedFiles.length} ไฟล์</span>
                   <span className="total-size">{formatFileSize(getTotalSize())}</span>
                 </div>
                 <div className="summary-actions">
@@ -534,8 +390,8 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
               </div>
               
               <div className="files-list">
-                {fileEntries.slice(0, 10).map((entry, index) => (
-                  <div key={entry.id} className="file-item">
+                {selectedFiles.slice(0, 10).map((file, index) => (
+                  <div key={index} className="file-item">
                     <div className="file-icon">
                       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
@@ -544,29 +400,8 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                       </svg>
                     </div>
                     <div className="file-details">
-                      <div className="file-name">{entry.file.name}</div>
-                      <div className="file-size">{formatFileSize(entry.file.size)}</div>
-                      <div className={`file-upload-status status-${entry.status}`}>
-                        <div className="upload-progress-text">
-                          {entry.status === 'uploaded' && 'อัปโหลดเสร็จแล้ว'}
-                          {entry.status === 'uploading' && 'กำลังอัปโหลด...'}
-                          {entry.status === 'pending' && 'รออัปโหลด'}
-                          {entry.status === 'error' && `ผิดพลาด: ${entry.error}`}
-                          {entry.progress.total > 0 && entry.status !== 'pending' && (
-                            <> ({formatFileSize(entry.progress.loaded)} / {formatFileSize(entry.progress.total)})</>
-                          )}
-                        </div>
-                        <div className="upload-progress-bar">
-                          <div
-                            className={`upload-progress-bar-fill status-${entry.status}`}
-                            style={{
-                              width: entry.progress.total
-                                ? `${Math.min(100, Math.round((entry.progress.loaded / entry.progress.total) * 100))}%`
-                                : '0%'
-                            }}
-                          ></div>
-                        </div>
-                      </div>
+                      <div className="file-name">{file.name}</div>
+                      <div className="file-size">{formatFileSize(file.size)}</div>
                     </div>
                     <button 
                       type="button" 
@@ -578,9 +413,9 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                   </div>
                 ))}
                 
-                {fileEntries.length > 10 && (
+                {selectedFiles.length > 10 && (
                   <div className="more-files">
-                    และอีก {fileEntries.length - 10} ไฟล์...
+                    และอีก {selectedFiles.length - 10} ไฟล์...
                   </div>
                 )}
               </div>
@@ -601,7 +436,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
         <input 
           ref={folderInputRef}
           type="file" 
-          webkitdirectory="true"
+          webkitdirectory
           multiple
           style={{ display: 'none' }}
           onChange={handleFolderInputChange}
@@ -624,16 +459,12 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
           <button 
             type="submit" 
             className="analyze-batch-btn"
-            disabled={
-              isLoading ||
-              fileEntries.length === 0 ||
-              fileEntries.some(entry => entry.status !== 'uploaded' || !entry.uploadId)
-            }
+            disabled={isLoading || selectedFiles.length === 0}
           >
             {isLoading ? (
               <>
                 <div className="btn-spinner"></div>
-                กำลังวิเคราะห์ {fileEntries.length} ไฟล์...
+                กำลังวิเคราะห์ {selectedFiles.length} ไฟล์...
               </>
             ) : (
               <>
@@ -641,7 +472,7 @@ const BatchUploadForm = ({ onBatchUploadSuccess, onBatchUploadStart, isLoading }
                   <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M21 12c0 1.2-.2 2.3-.5 3.3m-2.4 5.4a9 9 0 1 1-11.4-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                วิเคราะห์ทั้งหมด ({fileEntries.length} ไฟล์)
+                วิเคราะห์ทั้งหมด ({selectedFiles.length} ไฟล์)
               </>
             )}
           </button>

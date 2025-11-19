@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import './UploadForm.css'
 import { getApiBase } from '../lib/apiConfig'
 
@@ -7,30 +7,11 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
   const [error, setError] = useState('')
   const [isDragActive, setIsDragActive] = useState(false)
   const [preview, setPreview] = useState(null)
-  const [bufferState, setBufferState] = useState({
-    status: 'idle',
-    uploadId: null,
-    uploadedBytes: 0,
-    totalBytes: 0,
-    message: '',
-  })
-  const uploadReqRef = useRef(null)
 
   const handleFileChange = (file) => {
     if (file && file.type.startsWith('image/')) {
-      if (uploadReqRef.current) {
-        uploadReqRef.current.abort()
-        uploadReqRef.current = null
-      }
       setSelectedFile(file)
       setError('')
-      setBufferState({
-        status: 'pending',
-        uploadId: null,
-        uploadedBytes: 0,
-        totalBytes: file.size,
-        message: 'เตรียมอัปโหลด',
-      })
       
       // Create preview
       const reader = new FileReader()
@@ -38,8 +19,6 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
         setPreview(e.target.result)
       }
       reader.readAsDataURL(file)
-
-      uploadToBuffer(file)
     } else {
       setError('กรุณาเลือกไฟล์รูปภาพที่ถูกต้อง')
     }
@@ -73,20 +52,9 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
   }
 
   const handleRemoveFile = () => {
-    if (uploadReqRef.current) {
-      uploadReqRef.current.abort()
-      uploadReqRef.current = null
-    }
     setSelectedFile(null)
     setPreview(null)
     setError('')
-    setBufferState({
-      status: 'idle',
-      uploadId: null,
-      uploadedBytes: 0,
-      totalBytes: 0,
-      message: '',
-    })
   }
 
   const formatFileSize = (bytes) => {
@@ -104,24 +72,17 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
       return
     }
 
-    if (bufferState.status !== 'uploaded' || !bufferState.uploadId) {
-      setError('กรุณารอให้อัปโหลดไฟล์ขึ้นเซิร์ฟเวอร์เสร็จก่อน')
-      return
-    }
-
     setError('')
     onUploadStart?.()
+
+    const formData = new FormData()
+    formData.append('file', selectedFile)
+
     const API_BASE = getApiBase()
     try {
-      const res = await fetch(`${API_BASE}/api/process-buffer`, {
+      const res = await fetch(`${API_BASE}/api/predict`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          upload_ids: [bufferState.uploadId],
-          delete_after: true
-        })
+        body: formData,
       })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
@@ -135,13 +96,13 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
         throw new Error('Invalid response format')
       }
       
-      const resultItem = Array.isArray(data.results) ? data.results[0] : data
+      // Ensure required fields exist
       const processedData = {
-        prediction: resultItem.prediction || resultItem.result || resultItem.class_name || 'Unknown',
-        confidence: typeof resultItem.confidence === 'number' ? resultItem.confidence : (resultItem.probabilities?.[resultItem.predicted_class] ?? 0.5),
-        recommendations: resultItem.recommendations || [],
+        prediction: data.prediction || data.result || 'Unknown',
+        confidence: typeof data.confidence === 'number' ? data.confidence : 0.5,
+        recommendations: data.recommendations || [],
         timestamp: new Date().toISOString(),
-        ...resultItem
+        ...data
       }
       
       onUploadSuccess?.(processedData)
@@ -149,82 +110,6 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
       console.error(err)
       setError('การอัพโหลดล้มเหลว กรุณาตรวจสอบการเชื่อมต่อหรือ API Base URL')
     }
-  }
-
-  const uploadToBuffer = (file) => {
-    if (!file) return
-    const API_BASE = getApiBase()
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const xhr = new XMLHttpRequest()
-    uploadReqRef.current = xhr
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        setBufferState(prev => ({
-          ...prev,
-          status: 'uploading',
-          uploadedBytes: event.loaded,
-          totalBytes: event.total || file.size,
-          message: 'กำลังอัปโหลดขึ้นเซิร์ฟเวอร์'
-        }))
-      }
-    }
-
-    xhr.onerror = () => {
-      setBufferState({
-        status: 'error',
-        uploadId: null,
-        uploadedBytes: 0,
-        totalBytes: file.size,
-        message: 'อัปโหลดผิดพลาด'
-      })
-      uploadReqRef.current = null
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const resp = JSON.parse(xhr.responseText)
-          setBufferState({
-            status: 'uploaded',
-            uploadId: resp.upload_id,
-            uploadedBytes: file.size,
-            totalBytes: file.size,
-            message: 'อัปโหลดเสร็จแล้ว'
-          })
-        } catch (parseErr) {
-          console.error(parseErr)
-          setBufferState({
-            status: 'error',
-            uploadId: null,
-            uploadedBytes: 0,
-            totalBytes: file.size,
-            message: 'อ่านผลลัพธ์อัปโหลดไม่ได้'
-          })
-        }
-      } else {
-        setBufferState({
-          status: 'error',
-          uploadId: null,
-          uploadedBytes: 0,
-          totalBytes: file.size,
-          message: `อัปโหลดล้มเหลว (HTTP ${xhr.status})`
-        })
-      }
-      uploadReqRef.current = null
-    }
-
-    xhr.open('POST', `${API_BASE}/api/upload-buffer`)
-    xhr.send(formData)
-    setBufferState(prev => ({
-      ...prev,
-      status: 'uploading',
-      uploadedBytes: 0,
-      totalBytes: file.size,
-      message: 'กำลังอัปโหลดขึ้นเซิร์ฟเวอร์'
-    }))
   }
 
   return (
@@ -277,29 +162,6 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
             <div className="file-details">
               <div className="file-name">{selectedFile.name}</div>
               <div className="file-size">{formatFileSize(selectedFile.size)}</div>
-              {bufferState.status !== 'idle' && (
-                <div className="file-upload-status">
-                  <div className="upload-progress-text">
-                    {bufferState.message || 'กำลังอัปโหลด'}
-                    {bufferState.totalBytes > 0 && (
-                      <>
-                        {' '}
-                        ({formatFileSize(bufferState.uploadedBytes)} / {formatFileSize(bufferState.totalBytes)})
-                      </>
-                    )}
-                  </div>
-                  <div className="upload-progress-bar">
-                    <div
-                      className={`upload-progress-bar-fill status-${bufferState.status}`}
-                      style={{
-                        width: bufferState.totalBytes
-                          ? `${Math.min(100, Math.round((bufferState.uploadedBytes / bufferState.totalBytes) * 100))}%`
-                          : '0%'
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              )}
             </div>
             <button 
               type="button" 
@@ -328,7 +190,7 @@ const UploadForm = ({ onUploadSuccess, onUploadStart, isLoading }) => {
           <button 
             type="submit" 
             className="analyze-btn"
-            disabled={isLoading || !selectedFile || bufferState.status !== 'uploaded'}
+            disabled={isLoading || !selectedFile}
           >
             {isLoading ? (
               <>
