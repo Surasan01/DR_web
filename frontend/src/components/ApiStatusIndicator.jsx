@@ -27,7 +27,7 @@ export default function ApiStatusIndicator() {
     }
 
     try {
-      const response = await fetch(`${baseUrl}/api/health`, {
+      const response = await fetch(`${baseUrl}/health`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store'
