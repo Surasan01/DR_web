@@ -5,6 +5,7 @@ import UploadForm from './components/UploadForm'
 import ResultDisplay from './components/ResultDisplay'
 import BatchUploadForm from './components/BatchUploadForm'
 import BatchResultDisplay from './components/BatchResultDisplay'
+import ApiStatusIndicator from './components/ApiStatusIndicator'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 function App() {
@@ -62,6 +63,9 @@ function App() {
         <Header />
         <main className="main-content">
         <div className="container">
+          <div className="status-stack">
+            <ApiStatusIndicator />
+          </div>
           <div className="app-description">
             <h2>🩺 AI-Powered Diabetic Retinopathy Detection</h2>
             <p>วิเคราะห์ภาพจอประสาทตาด้วย AI เพื่อตรวจหาอาการจอประสาทตาเสื่อมจากเบาหวาน</p>

@@ -65,6 +65,22 @@ body::before {
   z-index: 3;
 }
 
+.status-stack {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 640px) {
+  .status-stack {
+    justify-content: center;
+  }
+  .status-stack .api-status-indicator {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .app-description {
   text-align: center;
   margin-bottom: 4rem;
