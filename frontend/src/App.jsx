@@ -5,7 +5,6 @@ import UploadForm from './components/UploadForm'
 import ResultDisplay from './components/ResultDisplay'
 import BatchUploadForm from './components/BatchUploadForm'
 import BatchResultDisplay from './components/BatchResultDisplay'
-import ApiSettings from './components/ApiSettings'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 function App() {
@@ -63,7 +62,6 @@ function App() {
         <Header />
         <main className="main-content">
         <div className="container">
-          <ApiSettings />
           <div className="app-description">
             <h2>🩺 AI-Powered Diabetic Retinopathy Detection</h2>
             <p>วิเคราะห์ภาพจอประสาทตาด้วย AI เพื่อตรวจหาอาการจอประสาทตาเสื่อมจากเบาหวาน</p>
