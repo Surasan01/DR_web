@@ -9,7 +9,7 @@ export default function ApiSettings() {
   const defaultBase = getDefaultApiBase()
 
   const checkHealth = async (base) => {
-    const url = normalizeUrl(base) + '/health'
+    const url = normalizeUrl(base) + '/api/health'
     try {
       setChecking(true)
       const res = await fetch(url, { method: 'GET' })
